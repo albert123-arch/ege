@@ -15,3 +15,4 @@ try {
 	http_response_code(500);
 	die('Database connection error: ' . $exception->getMessage());
 }
+// it goes here because of the error handling in the catch block, so that we can provide a more user-friendly message instead of a generic error page.

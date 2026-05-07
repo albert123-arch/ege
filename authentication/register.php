@@ -1,8 +1,8 @@
 <?php
 session_start();
-require_once __DIR__ . '/includes/config.php';
-require_once __DIR__ . '/includes/db.php';
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/auth.php';
 
 // Если уже авторизован - редирект на главную
 if (is_user_logged_in()) {
@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header('Location: ' . SITE_URL . '/');
                 exit();
             } else {
-                $success = $result['message'] . ' Пожалуйста, <a href="' . SITE_URL . '/login.php">войдите в систему</a>.';
+                $success = $result['message'] . ' Пожалуйста, <a href="' . SITE_URL . '/authentication/login.php">войдите в систему</a>.';
             }
         } else {
             $error = $result['message'];
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $page_title = 'Регистрация';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="row justify-content-center">
@@ -132,11 +132,11 @@ require_once __DIR__ . '/includes/header.php';
 
                 <p class="text-center mb-0">
                     Уже есть аккаунт? 
-                    <a href="<?php echo SITE_URL; ?>/login.php" class="text-decoration-none">Войдите в систему</a>
+                    <a href="<?php echo SITE_URL; ?>/authentication/login.php" class="text-decoration-none">Войдите в систему</a>
                 </p>
             </div>
         </div>
     </div>
 </div>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

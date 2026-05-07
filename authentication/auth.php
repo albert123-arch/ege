@@ -1,5 +1,5 @@
 <?php
-require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/../includes/db.php';
 
 /**
  * Хешировать пароль
@@ -133,7 +133,7 @@ function get_user_role() {
  */
 function require_login() {
     if (!is_user_logged_in()) {
-        header('Location: ' . SITE_URL . '/login.php');
+        header('Location: ' . SITE_URL . '/authentication/login.php');
         exit();
     }
 }

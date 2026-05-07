@@ -2,7 +2,7 @@
 session_start();
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
-require_once __DIR__ . '/auth.php';
+require_once __DIR__ . '/../authentication/auth.php';
 ?>
 <!DOCTYPE html>
 <html lang="ru">
@@ -47,14 +47,14 @@ require_once __DIR__ . '/auth.php';
                             </span>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="<?php echo SITE_URL; ?>/logout.php">Выход</a>
+                            <a class="nav-link" href="<?php echo SITE_URL; ?>/authentication/logout.php">Выход</a>
                         </li>
                     <?php else: ?>
                         <li class="nav-item">
-                            <a class="nav-link" href="<?php echo SITE_URL; ?>/login.php">Вход</a>
+                            <a class="nav-link" href="<?php echo SITE_URL; ?>/authentication/login.php">Вход</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="<?php echo SITE_URL; ?>/register.php">Регистрация</a>
+                            <a class="nav-link" href="<?php echo SITE_URL; ?>/authentication/register.php">Регистрация</a>
                         </li>
                     <?php endif; ?>
                 </ul>

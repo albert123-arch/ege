@@ -1,5 +1,7 @@
 <?php
+session_start();
 require_once __DIR__ . '/includes/db.php';
+require_once __DIR__ . '/authentication/auth.php';
 
 function e($value) {
 	return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
@@ -336,9 +338,17 @@ $introHtml = $page['intro_html'] ?? '<p>Теория, практика, зада
 				<li class="nav-item"><a class="nav-link" href="/practice.php">Практика</a></li>
 				<li class="nav-item"><a class="nav-link" href="/variants.php">Варианты</a></li>
 				<li class="nav-item"><a class="nav-link" href="/diagnostic.php">Диагностика</a></li>
-				<li class="nav-item ms-lg-2">
-					<a class="btn btn-sm btn-main px-3 py-2" href="/practice.php">Начать</a>
-				</li>
+				<?php if (is_user_logged_in()): ?>
+					<li class="nav-item"><span class="nav-link">Привет, <?= e(get_user_name()) ?></span></li>
+					<li class="nav-item ms-lg-2">
+						<a class="btn btn-sm btn-light-main px-3 py-2" href="/authentication/logout.php">Выход</a>
+					</li>
+				<?php else: ?>
+					<li class="nav-item"><a class="nav-link" href="/authentication/login.php">Вход</a></li>
+					<li class="nav-item ms-lg-2">
+						<a class="btn btn-sm btn-main px-3 py-2" href="/authentication/register.php">Регистрация</a>
+					</li>
+				<?php endif; ?>
 			</ul>
 		</div>
 	</div>

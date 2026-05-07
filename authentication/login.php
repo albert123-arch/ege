@@ -1,8 +1,8 @@
 <?php
 session_start();
-require_once __DIR__ . '/includes/config.php';
-require_once __DIR__ . '/includes/db.php';
-require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/../includes/config.php';
+require_once __DIR__ . '/../includes/db.php';
+require_once __DIR__ . '/auth.php';
 
 // Если уже авторизован - редирект на главную
 if (is_user_logged_in()) {
@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $page_title = 'Вход';
-require_once __DIR__ . '/includes/header.php';
+require_once __DIR__ . '/../includes/header.php';
 ?>
 
 <div class="row justify-content-center">
@@ -81,11 +81,11 @@ require_once __DIR__ . '/includes/header.php';
 
                 <p class="text-center mb-0">
                     Нет аккаунта? 
-                    <a href="<?php echo SITE_URL; ?>/register.php" class="text-decoration-none">Зарегистрируйтесь</a>
+                    <a href="<?php echo SITE_URL; ?>/authentication/register.php" class="text-decoration-none">Зарегистрируйтесь</a>
                 </p>
             </div>
         </div>
     </div>
 </div>
 
-<?php require_once __DIR__ . '/includes/footer.php'; ?>
+<?php require_once __DIR__ . '/../includes/footer.php'; ?>

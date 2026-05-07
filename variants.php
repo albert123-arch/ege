@@ -1,0 +1,2 @@
+<?php
+// Variants list page

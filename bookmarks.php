@@ -1,0 +1,2 @@
+<?php
+// Bookmarked questions page

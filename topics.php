@@ -1,0 +1,2 @@
+<?php
+// Topics list page

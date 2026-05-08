@@ -1,7 +1,10 @@
 <?php
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/functions.php';
 require_once __DIR__ . '/../authentication/auth.php';
 ?>
 <!DOCTYPE html>
@@ -35,6 +38,9 @@ require_once __DIR__ . '/../authentication/auth.php';
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="<?php echo SITE_URL; ?>/bookmarks.php">Закладки</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="<?php echo SITE_URL; ?>/results.php">Результаты</a>
                         </li>
                         <?php if (get_user_role() === 'admin' || get_user_role() === 'teacher'): ?>
                             <li class="nav-item">

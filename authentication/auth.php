@@ -1,6 +1,10 @@
 <?php
 require_once __DIR__ . '/../includes/db.php';
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
 /**
  * Хешировать пароль
  */
@@ -131,7 +135,7 @@ function get_user_role() {
 /**
  * Требовать, чтобы пользователь был авторизован
  */
-function require_login() {
+function require_login($mysqli = null) {
     if (!is_user_logged_in()) {
         header('Location: ' . SITE_URL . '/authentication/login.php');
         exit();
@@ -139,26 +143,33 @@ function require_login() {
 }
 
 /**
- * Требовать, чтобы пользователь был администратором
+ * Требовать, чтобы пользователь имел одну из ролей
  */
-function require_admin() {
+function require_role($mysqli = null, array $roles = []) {
     require_login();
-    if (get_user_role() !== 'admin') {
+
+    if (empty($roles)) {
+        return;
+    }
+
+    if (!in_array(get_user_role(), $roles, true)) {
         http_response_code(403);
         die('Доступ запрещен');
     }
 }
 
 /**
+ * Требовать, чтобы пользователь был администратором
+ */
+function require_admin() {
+    require_role(null, ['admin']);
+}
+
+/**
  * Требовать, чтобы пользователь был администратором или учителем
  */
 function require_teacher() {
-    require_login();
-    $role = get_user_role();
-    if ($role !== 'admin' && $role !== 'teacher') {
-        http_response_code(403);
-        die('Доступ запрещен');
-    }
+    require_role(null, ['admin', 'teacher']);
 }
 
 /**

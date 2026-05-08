@@ -293,12 +293,27 @@ require_once __DIR__ . '/includes/header.php';
         <h2 class="h4 mb-3"><?= e($question['title']) ?></h2>
 
         <div class="small text-muted mb-3">
-            <?php if (!empty($question['source_name'])): ?>Источник: <?= e($question['source_name']) ?> · <?php endif; ?>
-            <?php if (!empty($question['source_year'])): ?><?= e($question['source_year']) ?> · <?php endif; ?>
-            <?php if (!empty($question['source_month'])): ?><?= e($question['source_month']) ?> · <?php endif; ?>
-            <?php if (!empty($question['source_period'])): ?><?= e($question['source_period']) ?> · <?php endif; ?>
-            <?php if (!empty($question['source_variant_code'])): ?>Вариант <?= e($question['source_variant_code']) ?> · <?php endif; ?>
-            <?php if (!empty($question['source_task_number'])): ?>Номер в источнике: <?= e($question['source_task_number']) ?><?php endif; ?>
+            <?php
+                $qSrc      = $question['source'] ?? '';
+                $qSrcName  = $question['source_name'] ?? '';
+                $qMonth    = $question['source_month'] ?? '';
+                $qPeriod   = $question['source_period'] ?? '';
+                $qVariant  = $question['source_variant_code'] ?? '';
+                $qTaskNum  = $question['source_task_number'] ?? '';
+            ?>
+            <?php if ($qSrc === 'ФИПИ'): ?>
+                Задание из открытого банка заданий ФИПИ. Сайт Maths4U не является официальным сайтом ФИПИ. Решение и оформление подготовлены Maths4U.
+            <?php else: ?>
+                <?php if (!empty($qSrcName)): ?>
+                    <?php
+                        $srcLabelParts = [];
+                        if (!empty($qMonth))  $srcLabelParts[] = e($qMonth);
+                        if (!empty($qPeriod)) $srcLabelParts[] = sourcePeriodLabel($qPeriod);
+                    ?>
+                    Источник задания: <?= e($qSrcName) ?><?= !empty($srcLabelParts) ? ', ' . implode(', ', $srcLabelParts) : '' ?>.<?php if (!empty($qVariant)): ?> Вариант <?= e($qVariant) ?>.<?php endif; ?><?php if (!empty($qTaskNum)): ?> Номер в источнике: <?= e($qTaskNum) ?>.<?php endif; ?><br>
+                <?php endif; ?>
+                Авторское решение: Maths4U.
+            <?php endif; ?>
         </div>
 
         <?php if (!empty($mediaByRole['question'])): ?>

@@ -21,3 +21,20 @@ function get_flash_message() {
 
 	return $message;
 }
+
+function sourcePeriodLabel(string $period): string {
+	$map = [
+		'demo'     => 'демонстрационный вариант',
+		'early'    => 'досрочный период',
+		'march'    => 'март',
+		'april'    => 'апрель',
+		'may'      => 'май',
+		'june'     => 'июнь',
+		'main'     => 'основная волна',
+		'reserve'  => 'резервный день',
+		'teacher'  => 'учительский вариант',
+		'training' => 'тренировочный вариант',
+		'other'    => 'другое',
+	];
+	return $map[$period] ?? $period;
+}

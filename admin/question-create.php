@@ -7,6 +7,128 @@ require_once __DIR__ . '/../authentication/auth.php';
 
 require_role($mysqli, ['admin', 'teacher']);
 
+function detect_question_media_table(mysqli $mysqli): string {
+    $candidates = ['question_media', 'ege_question_media'];
+
+    foreach ($candidates as $tableName) {
+        $safeName = str_replace('`', '``', $tableName);
+        $query = "SHOW TABLES LIKE '" . $mysqli->real_escape_string($safeName) . "'";
+        $result = $mysqli->query($query);
+
+        if ($result && $result->num_rows > 0) {
+            $result->free();
+            return $tableName;
+        }
+
+        if ($result) {
+            $result->free();
+        }
+    }
+
+    return '';
+}
+
+function resolve_task_media_folder(mysqli $mysqli, int $taskTypeId): array {
+    $taskNumber = 0;
+
+    if ($taskTypeId > 0) {
+        $stmtTask = $mysqli->prepare("SELECT task_number FROM ege_task_types WHERE id = ? LIMIT 1");
+        $stmtTask->bind_param('i', $taskTypeId);
+        $stmtTask->execute();
+        $taskRow = $stmtTask->get_result()->fetch_assoc();
+        $stmtTask->close();
+
+        if ($taskRow) {
+            $taskNumber = (int)($taskRow['task_number'] ?? 0);
+        }
+    }
+
+    $taskCode = $taskNumber > 0 ? ('task_' . $taskNumber) : 'task_misc';
+
+    return [
+        'fs' => __DIR__ . '/../uploads/questions/' . $taskCode,
+        'web' => '/uploads/questions/' . $taskCode,
+        'task_code' => $taskCode,
+    ];
+}
+
+function upload_question_media_files(mysqli $mysqli, int $questionId, int $taskTypeId, string $tableName, string $role, string $altText, int $sortOrder): array {
+    if ($tableName === '' || !isset($_FILES['media_files']) || !is_array($_FILES['media_files']['name'] ?? null)) {
+        return ['uploaded' => 0, 'errors' => []];
+    }
+
+    $allowedMime = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+        'image/gif' => 'gif',
+    ];
+
+    $folder = resolve_task_media_folder($mysqli, $taskTypeId);
+    $uploadDirFs = $folder['fs'];
+    $uploadDirWeb = $folder['web'];
+    $taskCode = $folder['task_code'];
+    $errors = [];
+    $uploaded = 0;
+    $currentSort = $sortOrder;
+
+    if (!is_dir($uploadDirFs) && !mkdir($uploadDirFs, 0775, true) && !is_dir($uploadDirFs)) {
+        return ['uploaded' => 0, 'errors' => ['Не удалось создать папку uploads/questions']];
+    }
+
+    $finfo = new finfo(FILEINFO_MIME_TYPE);
+
+    foreach ($_FILES['media_files']['name'] as $index => $originalName) {
+        $tmpName = $_FILES['media_files']['tmp_name'][$index] ?? '';
+        $errorCode = (int)($_FILES['media_files']['error'][$index] ?? UPLOAD_ERR_NO_FILE);
+        $fileSize = (int)($_FILES['media_files']['size'][$index] ?? 0);
+
+        if ($errorCode === UPLOAD_ERR_NO_FILE || $tmpName === '') {
+            continue;
+        }
+
+        if ($errorCode !== UPLOAD_ERR_OK) {
+            $errors[] = 'Ошибка загрузки файла: ' . (string)$originalName;
+            continue;
+        }
+
+        if ($fileSize <= 0 || $fileSize > 5 * 1024 * 1024) {
+            $errors[] = 'Файл слишком большой (макс. 5MB): ' . (string)$originalName;
+            continue;
+        }
+
+        $mimeType = $finfo->file($tmpName) ?: '';
+        if (!isset($allowedMime[$mimeType])) {
+            $errors[] = 'Недопустимый тип файла: ' . (string)$originalName;
+            continue;
+        }
+
+        $extension = $allowedMime[$mimeType];
+        $uniqueCode = strtolower($taskCode . '_' . date('YmdHis') . '_' . bin2hex(random_bytes(5)));
+        $filename = $uniqueCode . '.' . $extension;
+        $targetPathFs = $uploadDirFs . '/' . $filename;
+        $targetPathWeb = $uploadDirWeb . '/' . $filename;
+
+        if (!move_uploaded_file($tmpName, $targetPathFs)) {
+            $errors[] = 'Не удалось сохранить файл: ' . (string)$originalName;
+            continue;
+        }
+
+        $safeTable = str_replace('`', '``', $tableName);
+        $stmtMedia = $mysqli->prepare(
+            "INSERT INTO `{$safeTable}` (question_id, role, file_path, file_type, alt_text, sort_order) VALUES (?, ?, ?, ?, ?, ?)"
+        );
+        $stmtMedia->bind_param('issssi', $questionId, $role, $targetPathWeb, $mimeType, $altText, $currentSort);
+        $stmtMedia->execute();
+        $stmtMedia->close();
+
+        $currentSort++;
+        $uploaded++;
+    }
+
+    return ['uploaded' => $uploaded, 'errors' => $errors];
+}
+
 $taskTypes = [];
 $topics = [];
 $taskResult = $mysqli->query("SELECT id, task_number, title FROM ege_task_types WHERE is_active = 1 ORDER BY task_number ASC");
@@ -34,6 +156,7 @@ $form = [
     'checked' => '0',
 ];
 $error = '';
+$mediaTable = detect_question_media_table($mysqli);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     foreach ($form as $field => $default) {
@@ -81,7 +204,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $newId = (int)$stmt->insert_id;
         $stmt->close();
 
-        set_flash_message('success', 'Вопрос успешно создан (ID: ' . $newId . ').');
+        $mediaRole = $_POST['media_role'] ?? 'question';
+        if (!in_array($mediaRole, ['question', 'solution', 'hint', 'extra'], true)) {
+            $mediaRole = 'question';
+        }
+
+        $mediaAltText = trim((string)($_POST['media_alt_text'] ?? ''));
+        $mediaSortOrder = (int)($_POST['media_sort_order'] ?? 0);
+
+        $mediaResult = upload_question_media_files($mysqli, $newId, $taskTypeId, $mediaTable, $mediaRole, $mediaAltText, $mediaSortOrder);
+
+        $flashMessage = 'Вопрос успешно создан (ID: ' . $newId . ').';
+        if ($mediaTable === '' && isset($_FILES['media_files']) && !empty(array_filter($_FILES['media_files']['name'] ?? []))) {
+            $flashMessage .= ' Картинки не сохранены: таблица question_media/ege_question_media не найдена.';
+        } elseif (!empty($mediaResult['errors'])) {
+            $flashMessage .= ' Часть файлов не загружена: ' . implode('; ', $mediaResult['errors']);
+        } elseif (($mediaResult['uploaded'] ?? 0) > 0) {
+            $flashMessage .= ' Загружено изображений: ' . (int)$mediaResult['uploaded'] . '.';
+        }
+
+        set_flash_message('success', $flashMessage);
         header('Location: ' . SITE_URL . '/admin/questions.php');
         exit();
     }
@@ -100,7 +242,7 @@ require_once __DIR__ . '/../includes/header.php';
     <div class="alert alert-danger"><?= e($error) ?></div>
 <?php endif; ?>
 
-<form method="post" class="card border-0 shadow-sm">
+<form method="post" enctype="multipart/form-data" class="card border-0 shadow-sm">
     <div class="card-body">
         <div class="row g-3">
             <div class="col-md-6">
@@ -174,6 +316,34 @@ require_once __DIR__ . '/../includes/header.php';
                     <option value="1" <?= $form['checked'] === '1' ? 'selected' : '' ?>>checked</option>
                     <option value="0" <?= $form['checked'] === '0' ? 'selected' : '' ?>>unchecked</option>
                 </select>
+            </div>
+
+            <div class="col-12"><hr></div>
+
+            <div class="col-12">
+                <label class="form-label">Картинки (question_media)</label>
+                <input class="form-control" type="file" name="media_files[]" accept="image/*" multiple>
+                <small class="text-muted">Можно загрузить несколько изображений, каждое до 5MB.</small>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Роль изображения</label>
+                <select class="form-select" name="media_role">
+                    <option value="question">question</option>
+                    <option value="solution">solution</option>
+                    <option value="hint">hint</option>
+                    <option value="extra">extra</option>
+                </select>
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Alt текст</label>
+                <input class="form-control" name="media_alt_text" maxlength="255" placeholder="Описание изображения">
+            </div>
+
+            <div class="col-md-4">
+                <label class="form-label">Начальный sort_order</label>
+                <input class="form-control" type="number" name="media_sort_order" value="0" min="0">
             </div>
         </div>
     </div>

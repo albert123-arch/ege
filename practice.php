@@ -5,12 +5,13 @@ require_once __DIR__ . '/includes/db.php';
 require_once __DIR__ . '/includes/functions.php';
 require_once __DIR__ . '/authentication/auth.php';
 
-require_login();
-
-$currentUserId = (int)get_current_user_id();
+$isLoggedIn = function_exists('is_logged_in')
+	? is_logged_in()
+	: (function_exists('is_user_logged_in') ? is_user_logged_in() : false);
+$currentUserId = $isLoggedIn ? (int)get_current_user_id() : 0;
 $errorMessage = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bookmark_question_id'])) {
+if ($isLoggedIn && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bookmark_question_id'])) {
 	$bookmarkQuestionId = (int)$_POST['bookmark_question_id'];
 	if ($bookmarkQuestionId > 0) {
 		try {
@@ -50,6 +51,12 @@ $filterNotSolved = isset($_GET['not_solved']) && $_GET['not_solved'] === '1';
 $filterWrong = isset($_GET['wrong']) && $_GET['wrong'] === '1';
 $filterBookmarked = isset($_GET['bookmarked']) && $_GET['bookmarked'] === '1';
 
+if (!$isLoggedIn) {
+	$filterNotSolved = false;
+	$filterWrong = false;
+	$filterBookmarked = false;
+}
+
 if (!in_array($filterDifficulty, ['', 'easy', 'medium', 'hard'], true)) {
 	$filterDifficulty = '';
 }
@@ -82,19 +89,22 @@ try {
 			tt.task_number,
 			tt.title AS task_title,
 			t.title AS topic_title,
-			EXISTS(
-				SELECT 1
-				FROM ege_bookmarks b
-				WHERE b.user_id = ? AND b.question_id = q.id
-			) AS is_bookmarked
+			CASE
+				WHEN ? > 0 THEN EXISTS(
+					SELECT 1
+					FROM ege_bookmarks b
+					WHERE b.user_id = ? AND b.question_id = q.id
+				)
+				ELSE 0
+			END AS is_bookmarked
 		FROM ege_questions q
 		JOIN ege_task_types tt ON tt.id = q.task_type_id
 		LEFT JOIN ege_topics t ON t.id = q.topic_id
 		WHERE q.is_published = 1
 	";
 
-	$types = 'i';
-	$params = [$currentUserId];
+	$types = 'ii';
+	$params = [$currentUserId, $currentUserId];
 
 	if ($filterTaskType > 0) {
 		$sql .= " AND q.task_type_id = ?";
@@ -240,17 +250,24 @@ require_once __DIR__ . '/includes/header.php';
 					<div class="mb-3"><?= $question['body_html'] ?></div>
 
 					<div class="d-flex justify-content-between align-items-center gap-2 flex-wrap">
-						<div>
-							<?php if (!empty($question['answer_text'])): ?>
-								<span class="text-muted">Ответ: <?= e($question['answer_text']) ?></span>
+						<div class="d-flex gap-2 flex-wrap">
+							<a class="btn btn-sm btn-primary" href="/question.php?id=<?= (int)$question['id'] ?>">
+								Открыть задачу
+							</a>
+
+							<?php if ($isLoggedIn): ?>
+								<form method="post" class="mb-0">
+									<input type="hidden" name="bookmark_question_id" value="<?= (int)$question['id'] ?>">
+									<button class="btn btn-sm <?= (int)$question['is_bookmarked'] === 1 ? 'btn-warning' : 'btn-outline-warning' ?>" type="submit">
+										<?= (int)$question['is_bookmarked'] === 1 ? 'Убрать из закладок' : 'В закладки' ?>
+									</button>
+								</form>
+							<?php else: ?>
+								<a class="btn btn-sm btn-outline-secondary" href="/authentication/login.php">
+									Войти для закладок
+								</a>
 							<?php endif; ?>
 						</div>
-						<form method="post" class="mb-0">
-							<input type="hidden" name="bookmark_question_id" value="<?= (int)$question['id'] ?>">
-							<button class="btn btn-sm <?= (int)$question['is_bookmarked'] === 1 ? 'btn-warning' : 'btn-outline-warning' ?>" type="submit">
-								<?= (int)$question['is_bookmarked'] === 1 ? 'Убрать из закладок' : 'В закладки' ?>
-							</button>
-						</form>
 					</div>
 				</div>
 			</article>

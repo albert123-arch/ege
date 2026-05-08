@@ -109,6 +109,7 @@ $errorMessage = '';
 $successMessage = '';
 $submittedAnswer = '';
 $isCorrect = null;
+$showSolution = false;
 
 $stmtQuestion = $mysqli->prepare(
 	"SELECT
@@ -193,6 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			$normalizedUser = normalize_answer($submittedAnswer);
 			$normalizedRight = normalize_answer((string)$question['answer_text']);
 			$isCorrect = $normalizedUser !== '' && $normalizedUser === $normalizedRight;
+			$showSolution = true;
 
 			if ($isCorrect) {
 				$successMessage = 'Верно! Ответ совпадает.';
@@ -208,6 +210,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 				}
 			}
 		}
+	}
+
+	if (isset($_POST['reveal_solution'])) {
+		$showSolution = true;
 	}
 }
 
@@ -333,24 +339,32 @@ require_once __DIR__ . '/includes/header.php';
 <section class="card border-0 shadow-sm mb-4">
 	<div class="card-body">
 		<h3 class="h5">Решение</h3>
-		<?php if (!empty($question['solution_html'])): ?>
-			<div class="mb-3"><?= $question['solution_html'] ?></div>
+
+		<?php if (!$showSolution): ?>
+			<p class="text-muted mb-3">Решение и правильный ответ скрыты до проверки.</p>
+			<form method="post" class="mb-0">
+				<button class="btn btn-sm btn-outline-secondary" type="submit" name="reveal_solution" value="1">Показать решение</button>
+			</form>
 		<?php else: ?>
-			<p class="text-muted mb-3">Решение пока не добавлено.</p>
-		<?php endif; ?>
+			<?php if (!empty($question['solution_html'])): ?>
+				<div class="mb-3"><?= $question['solution_html'] ?></div>
+			<?php else: ?>
+				<p class="text-muted mb-3">Решение пока не добавлено.</p>
+			<?php endif; ?>
 
-		<?php if (!empty($mediaByRole['solution'])): ?>
-			<div class="row g-3 mb-3">
-				<?php foreach ($mediaByRole['solution'] as $media): ?>
-					<div class="col-md-6">
-						<img class="img-fluid rounded border" src="<?= e($media['file_path']) ?>" alt="<?= e($media['alt_text'] ?: 'Иллюстрация решения') ?>">
-					</div>
-				<?php endforeach; ?>
-			</div>
-		<?php endif; ?>
+			<?php if (!empty($mediaByRole['solution'])): ?>
+				<div class="row g-3 mb-3">
+					<?php foreach ($mediaByRole['solution'] as $media): ?>
+						<div class="col-md-6">
+							<img class="img-fluid rounded border" src="<?= e($media['file_path']) ?>" alt="<?= e($media['alt_text'] ?: 'Иллюстрация решения') ?>">
+						</div>
+					<?php endforeach; ?>
+				</div>
+			<?php endif; ?>
 
-		<?php if (!empty($question['answer_text'])): ?>
-			<div class="alert alert-light border mb-0">Правильный ответ: <strong><?= e($question['answer_text']) ?></strong></div>
+			<?php if (!empty($question['answer_text'])): ?>
+				<div class="alert alert-light border mb-0">Правильный ответ: <strong><?= e($question['answer_text']) ?></strong></div>
+			<?php endif; ?>
 		<?php endif; ?>
 	</div>
 </section>

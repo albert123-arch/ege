@@ -19,7 +19,7 @@ if ($questionId <= 0) {
 
 $errorMessage = '';
 $successMessage = '';
-$showSolution = false;
+$showSolution = true;
 
 $question = null;
 try {
@@ -118,35 +118,53 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $isCorrect = $normalizedSubmitted !== '' && $normalizedSubmitted === $normalizedRight;
                 $maxScore = isset($question['max_score']) ? (float)$question['max_score'] : 1.0;
                 $score = $isCorrect ? 1.0 : 0.0;
+                $existingAttempt = null;
 
                 if ($isLoggedIn) {
                     try {
-                        $stmtAttempt = $mysqli->prepare(
-                            'INSERT INTO ege_question_attempts (user_id, question_id, answer_text, is_correct, check_mode, score, max_score, self_marked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NOW())'
+                        $stmtFirstAttempt = $mysqli->prepare(
+                            'SELECT id FROM ege_question_attempts WHERE user_id = ? AND question_id = ? ORDER BY id ASC LIMIT 1'
                         );
-                        $checkMode = 'auto';
-                        $correctInt = $isCorrect ? 1 : 0;
-                        $stmtAttempt->bind_param(
-                            'iisisdd',
-                            $currentUserId,
-                            $questionId,
-                            $submittedAnswer,
-                            $correctInt,
-                            $checkMode,
-                            $score,
-                            $maxScore
-                        );
-                        $stmtAttempt->execute();
-                        $stmtAttempt->close();
+                        $stmtFirstAttempt->bind_param('ii', $currentUserId, $questionId);
+                        $stmtFirstAttempt->execute();
+                        $existingAttempt = $stmtFirstAttempt->get_result()->fetch_assoc();
+                        $stmtFirstAttempt->close();
+
+                        if (!$existingAttempt) {
+                            $stmtAttempt = $mysqli->prepare(
+                                'INSERT INTO ege_question_attempts (user_id, question_id, answer_text, is_correct, check_mode, score, max_score, self_marked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NOW())'
+                            );
+                            $checkMode = 'auto';
+                            $correctInt = $isCorrect ? 1 : 0;
+                            $stmtAttempt->bind_param(
+                                'iisisdd',
+                                $currentUserId,
+                                $questionId,
+                                $submittedAnswer,
+                                $correctInt,
+                                $checkMode,
+                                $score,
+                                $maxScore
+                            );
+                            $stmtAttempt->execute();
+                            $stmtAttempt->close();
+                        }
                     } catch (Throwable $exception) {
                         $errorMessage = 'Ответ проверен, но сохранить попытку не удалось.';
                     }
                 }
 
                 if ($errorMessage === '') {
-                    $successMessage = $isCorrect ? 'Верно!' : 'Неверно. Проверьте решение и попробуйте еще раз.';
+                    if ($isLoggedIn && !empty($existingAttempt)) {
+                        $successMessage = $isCorrect
+                            ? 'Верно! Проверка выполнена. В прогресс сохраняется только первая попытка.'
+                            : 'Неверно. Проверка выполнена. В прогресс сохраняется только первая попытка.';
+                    } else {
+                        $successMessage = $isCorrect
+                            ? 'Верно! Сохранена первая попытка.'
+                            : 'Неверно. Сохранена первая попытка.';
+                    }
                 }
-                $showSolution = true;
             }
         }
     }
@@ -168,23 +186,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $isCorrect = abs($selectedScore - $maxScore) < 0.0001 ? 1 : 0;
 
             try {
-                $stmtAttempt = $mysqli->prepare(
-                    'INSERT INTO ege_question_attempts (user_id, question_id, answer_text, is_correct, check_mode, score, max_score, self_marked, created_at) VALUES (?, ?, NULL, ?, ?, ?, ?, 1, NOW())'
+                $stmtFirstAttempt = $mysqli->prepare(
+                    'SELECT id FROM ege_question_attempts WHERE user_id = ? AND question_id = ? ORDER BY id ASC LIMIT 1'
                 );
-                $checkMode = 'self';
-                $stmtAttempt->bind_param(
-                    'iiisdd',
-                    $currentUserId,
-                    $questionId,
-                    $isCorrect,
-                    $checkMode,
-                    $selectedScore,
-                    $maxScore
-                );
-                $stmtAttempt->execute();
-                $stmtAttempt->close();
-                $successMessage = 'Самооценка сохранена.';
-                $showSolution = true;
+                $stmtFirstAttempt->bind_param('ii', $currentUserId, $questionId);
+                $stmtFirstAttempt->execute();
+                $existingAttempt = $stmtFirstAttempt->get_result()->fetch_assoc();
+                $stmtFirstAttempt->close();
+
+                if (!$existingAttempt) {
+                    $stmtAttempt = $mysqli->prepare(
+                        'INSERT INTO ege_question_attempts (user_id, question_id, answer_text, is_correct, check_mode, score, max_score, self_marked, created_at) VALUES (?, ?, NULL, ?, ?, ?, ?, 1, NOW())'
+                    );
+                    $checkMode = 'self';
+                    $stmtAttempt->bind_param(
+                        'iiisdd',
+                        $currentUserId,
+                        $questionId,
+                        $isCorrect,
+                        $checkMode,
+                        $selectedScore,
+                        $maxScore
+                    );
+                    $stmtAttempt->execute();
+                    $stmtAttempt->close();
+                    $successMessage = 'Сохранена первая самооценка.';
+                } else {
+                    $successMessage = 'Оценка просмотрена. В прогресс сохраняется только первая попытка.';
+                }
             } catch (Throwable $exception) {
                 $errorMessage = 'Не удалось сохранить самооценку.';
             }

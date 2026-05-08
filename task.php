@@ -102,27 +102,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
                     $maxScore = isset($questionRow['max_score']) ? (float)$questionRow['max_score'] : 1.0;
                     $score = $isCorrect ? 1.0 : 0.0;
 
-                    $stmtAttempt = $mysqli->prepare(
-                        'INSERT INTO ege_question_attempts (user_id, question_id, answer_text, is_correct, check_mode, score, max_score, self_marked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NOW())'
+                    $stmtFirstAttempt = $mysqli->prepare(
+                        'SELECT id FROM ege_question_attempts WHERE user_id = ? AND question_id = ? ORDER BY id ASC LIMIT 1'
                     );
-                    $checkMode = 'auto';
-                    $correctInt = $isCorrect ? 1 : 0;
-                    $stmtAttempt->bind_param(
-                        'iisisdd',
-                        $currentUserId,
-                        $postQuestionId,
-                        $submittedAnswer,
-                        $correctInt,
-                        $checkMode,
-                        $score,
-                        $maxScore
-                    );
-                    $stmtAttempt->execute();
-                    $stmtAttempt->close();
+                    $stmtFirstAttempt->bind_param('ii', $currentUserId, $postQuestionId);
+                    $stmtFirstAttempt->execute();
+                    $existingAttempt = $stmtFirstAttempt->get_result()->fetch_assoc();
+                    $stmtFirstAttempt->close();
 
-                    $successMessage = $isCorrect
-                        ? 'Верно! Попытка сохранена.'
-                        : 'Ответ неверный. Попытка сохранена.';
+                    if (!$existingAttempt) {
+                        $stmtAttempt = $mysqli->prepare(
+                            'INSERT INTO ege_question_attempts (user_id, question_id, answer_text, is_correct, check_mode, score, max_score, self_marked, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, 0, NOW())'
+                        );
+                        $checkMode = 'auto';
+                        $correctInt = $isCorrect ? 1 : 0;
+                        $stmtAttempt->bind_param(
+                            'iisisdd',
+                            $currentUserId,
+                            $postQuestionId,
+                            $submittedAnswer,
+                            $correctInt,
+                            $checkMode,
+                            $score,
+                            $maxScore
+                        );
+                        $stmtAttempt->execute();
+                        $stmtAttempt->close();
+
+                        $successMessage = $isCorrect
+                            ? 'Верно! Сохранена первая попытка.'
+                            : 'Ответ неверный. Сохранена первая попытка.';
+                    } else {
+                        $successMessage = $isCorrect
+                            ? 'Верно! Проверка выполнена. В прогресс сохраняется только первая попытка.'
+                            : 'Ответ неверный. В прогресс сохраняется только первая попытка.';
+                    }
                 }
             } catch (Throwable $exception) {
                 $errorMessage = 'Не удалось сохранить результат проверки.';
@@ -154,23 +168,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
                 }
                 $isCorrect = abs($selectedScore - $maxScore) < 0.0001 ? 1 : 0;
 
-                $stmtAttempt = $mysqli->prepare(
-                    'INSERT INTO ege_question_attempts (user_id, question_id, answer_text, is_correct, check_mode, score, max_score, self_marked, created_at) VALUES (?, ?, NULL, ?, ?, ?, ?, 1, NOW())'
+                $stmtFirstAttempt = $mysqli->prepare(
+                    'SELECT id FROM ege_question_attempts WHERE user_id = ? AND question_id = ? ORDER BY id ASC LIMIT 1'
                 );
-                $checkMode = 'self';
-                $stmtAttempt->bind_param(
-                    'iiisdd',
-                    $currentUserId,
-                    $postQuestionId,
-                    $isCorrect,
-                    $checkMode,
-                    $selectedScore,
-                    $maxScore
-                );
-                $stmtAttempt->execute();
-                $stmtAttempt->close();
+                $stmtFirstAttempt->bind_param('ii', $currentUserId, $postQuestionId);
+                $stmtFirstAttempt->execute();
+                $existingAttempt = $stmtFirstAttempt->get_result()->fetch_assoc();
+                $stmtFirstAttempt->close();
 
-                $successMessage = 'Самооценка сохранена.';
+                if (!$existingAttempt) {
+                    $stmtAttempt = $mysqli->prepare(
+                        'INSERT INTO ege_question_attempts (user_id, question_id, answer_text, is_correct, check_mode, score, max_score, self_marked, created_at) VALUES (?, ?, NULL, ?, ?, ?, ?, 1, NOW())'
+                    );
+                    $checkMode = 'self';
+                    $stmtAttempt->bind_param(
+                        'iiisdd',
+                        $currentUserId,
+                        $postQuestionId,
+                        $isCorrect,
+                        $checkMode,
+                        $selectedScore,
+                        $maxScore
+                    );
+                    $stmtAttempt->execute();
+                    $stmtAttempt->close();
+
+                    $successMessage = 'Сохранена первая самооценка.';
+                } else {
+                    $successMessage = 'Оценка просмотрена. В прогресс сохраняется только первая попытка.';
+                }
             }
         } catch (Throwable $exception) {
             $errorMessage = 'Не удалось сохранить самооценку.';
@@ -418,6 +444,18 @@ require_once __DIR__ . '/includes/header.php';
                         <?php else: ?>
                             <div class="small text-muted">Войдите, чтобы проверять краткие ответы и сохранять прогресс.</div>
                         <?php endif; ?>
+
+                        <details class="mt-3">
+                            <summary class="mb-2">Показать решение и критерии</summary>
+                            <?php if (!empty($question['solution_html'])): ?>
+                                <div class="mb-2"><?= $question['solution_html'] ?></div>
+                            <?php else: ?>
+                                <div class="small text-muted mb-2">Решение пока не добавлено.</div>
+                            <?php endif; ?>
+                            <?php if (!empty($question['marking_scheme_html'])): ?>
+                                <div class="mb-2"><?= $question['marking_scheme_html'] ?></div>
+                            <?php endif; ?>
+                        </details>
                     <?php else: ?>
                         <details>
                             <summary class="mb-2">Показать решение и критерии</summary>

@@ -429,23 +429,10 @@ require_once __DIR__ . '/includes/header.php';
                     <div class="d-flex justify-content-between align-items-start gap-3 flex-wrap mb-2">
                         <div>
                             <div class="text-muted small mb-1">
-                                <?php
-                                    $tSrc     = $question['source'] ?? '';
-                                    $tName    = $question['source_name'] ?? '';
-                                    $tMonth   = $question['source_month'] ?? '';
-                                    $tPeriod  = $question['source_period'] ?? '';
-                                    $tVariant = $question['source_variant_code'] ?? '';
-                                    $tParts   = [];
-                                    if (!empty($question['subtopic_title'])) $tParts[] = e($question['subtopic_title']);
-                                    if (!empty($tName)) {
-                                        $tLabel = e($tName);
-                                        if (!empty($tMonth))  $tLabel .= ', ' . e($tMonth);
-                                        if (!empty($tPeriod) && $tSrc !== 'ФИПИ') $tLabel .= ', ' . sourcePeriodLabel($tPeriod);
-                                        $tParts[] = $tLabel;
-                                    }
-                                    if (!empty($tVariant)) $tParts[] = 'Вариант ' . e($tVariant);
-                                    echo implode(' · ', $tParts);
-                                ?>
+                                <?= !empty($question['subtopic_title']) ? e($question['subtopic_title']) . ' · ' : '' ?>
+                                <?= !empty($question['source_year']) ? e($question['source_year']) . ' · ' : '' ?>
+                                <?= !empty($question['source_period']) ? e($question['source_period']) . ' · ' : '' ?>
+                                <?= !empty($question['source_variant_code']) ? 'Вариант ' . e($question['source_variant_code']) : '' ?>
                             </div>
                             <h2 class="h5 mb-2"><?= e($question['title']) ?></h2>
                         </div>

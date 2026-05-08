@@ -19,6 +19,8 @@ require_once __DIR__ . '/../authentication/auth.php';
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="<?php echo SITE_URL; ?>/assets/css/main.css">
+
+    <?php require_once __DIR__ . '/mathjax.php'; ?>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">

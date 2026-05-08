@@ -105,19 +105,7 @@ $introHtml = $page['intro_html'] ?? '<p>Теория, практика, зада
 
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
-	<script>
-		window.MathJax = {
-			tex: {
-				inlineMath: [['\\(', '\\)'], ['$', '$']],
-				displayMath: [['\\[', '\\]'], ['$$', '$$']],
-				processEscapes: true
-			},
-			svg: {
-				fontCache: 'global'
-			}
-		};
-	</script>
-	<script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+	<?php require_once __DIR__ . '/includes/mathjax.php'; ?>
 
 	<style>
 		:root {

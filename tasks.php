@@ -23,7 +23,7 @@ try {
         LEFT JOIN ege_questions q ON q.task_type_id = tt.id AND q.is_published = 1
         WHERE tt.is_active = 1
         GROUP BY tt.id
-        ORDER BY tt.task_number ASC
+        ORDER BY tt.part_number, tt.task_number
     ";
     $result = $mysqli->query($sql);
     while ($row = $result->fetch_assoc()) {

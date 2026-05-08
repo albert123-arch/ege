@@ -280,21 +280,26 @@ require_once __DIR__ . '/includes/header.php';
 			<span class="badge text-bg-light"><?= e($question['difficulty']) ?></span>
 		</div>
 
-		<div class="mb-3"><?= $question['body_html'] ?></div>
-
 		<?php if (!empty($mediaByRole['question'])): ?>
-			<div class="row g-3 mb-3">
-				<?php foreach ($mediaByRole['question'] as $media): ?>
-					<div class="col-md-6">
-						<figure class="mb-0">
-							<img class="img-fluid rounded border" src="<?= e($media['file_path']) ?>" alt="<?= e($media['alt_text'] ?: 'Иллюстрация к задаче') ?>">
-							<?php if (!empty($media['alt_text'])): ?>
-								<figcaption class="small text-muted mt-1"><?= e($media['alt_text']) ?></figcaption>
-							<?php endif; ?>
-						</figure>
+			<div class="row g-4 align-items-start mb-3">
+				<div class="col-lg-8">
+					<div><?= $question['body_html'] ?></div>
+				</div>
+				<div class="col-lg-4">
+					<div class="vstack gap-3">
+						<?php foreach ($mediaByRole['question'] as $media): ?>
+							<figure class="mb-0">
+								<img class="img-fluid rounded border w-100" src="<?= e($media['file_path']) ?>" alt="<?= e($media['alt_text'] ?: 'Иллюстрация к задаче') ?>">
+								<?php if (!empty($media['alt_text'])): ?>
+									<figcaption class="small text-muted mt-1"><?= e($media['alt_text']) ?></figcaption>
+								<?php endif; ?>
+							</figure>
+						<?php endforeach; ?>
 					</div>
-				<?php endforeach; ?>
+				</div>
 			</div>
+		<?php else: ?>
+			<div class="mb-3"><?= $question['body_html'] ?></div>
 		<?php endif; ?>
 
 		<form method="post" class="row g-2 align-items-end">

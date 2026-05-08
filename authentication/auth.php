@@ -6,6 +6,41 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 }
 
 /**
+ * Синхронизировать данные пользователя из БД в сессию.
+ */
+function sync_current_user_session() {
+    global $mysqli;
+
+    if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {
+        return;
+    }
+
+    $userId = (int)$_SESSION['user_id'];
+    if ($userId <= 0) {
+        return;
+    }
+
+    $stmt = $mysqli->prepare("SELECT email, full_name, role, status FROM ege_users WHERE id = ? LIMIT 1");
+    if (!$stmt) {
+        return;
+    }
+
+    $stmt->bind_param('i', $userId);
+    $stmt->execute();
+    $user = $stmt->get_result()->fetch_assoc();
+    $stmt->close();
+
+    if (!$user || ($user['status'] ?? '') !== 'active') {
+        unset($_SESSION['user_id'], $_SESSION['email'], $_SESSION['full_name'], $_SESSION['role']);
+        return;
+    }
+
+    $_SESSION['email'] = $user['email'];
+    $_SESSION['full_name'] = $user['full_name'];
+    $_SESSION['role'] = $user['role'];
+}
+
+/**
  * Хешировать пароль
  */
 function hash_password($password) {
@@ -101,6 +136,20 @@ function login_user($email, $password) {
  * Проверить, авторизован ли пользователь
  */
 function is_user_logged_in() {
+    // Поддержка старых ключей сессии.
+    if (!isset($_SESSION['user_id']) && isset($_SESSION['ege_user_id'])) {
+        $_SESSION['user_id'] = $_SESSION['ege_user_id'];
+    }
+    if (!isset($_SESSION['role']) && isset($_SESSION['ege_role'])) {
+        $_SESSION['role'] = $_SESSION['ege_role'];
+    }
+
+    static $isSynced = false;
+    if (!$isSynced && isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
+        sync_current_user_session();
+        $isSynced = true;
+    }
+
     return isset($_SESSION['user_id']) && !empty($_SESSION['user_id']);
 }
 

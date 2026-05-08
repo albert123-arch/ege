@@ -72,23 +72,34 @@ $mediaByRole = [
 ];
 
 try {
-    $stmtMedia = $mysqli->prepare(
-        'SELECT id, role, file_path, file_type, alt_text, sort_order
-         FROM ege_question_media
-         WHERE question_id = ?
-         ORDER BY sort_order ASC, id ASC'
-    );
-    $stmtMedia->bind_param('i', $questionId);
-    $stmtMedia->execute();
-    $resultMedia = $stmtMedia->get_result();
-    while ($row = $resultMedia->fetch_assoc()) {
-        $role = (string)($row['role'] ?? 'question');
-        if (!isset($mediaByRole[$role])) {
-            $mediaByRole[$role] = [];
-        }
-        $mediaByRole[$role][] = $row;
+    $resultMediaTable = $mysqli->query("SHOW TABLES LIKE 'ege_question_media'");
+    $hasQuestionMediaTable = $resultMediaTable && $resultMediaTable->num_rows > 0;
+    if ($resultMediaTable) {
+        $resultMediaTable->free();
     }
-    $stmtMedia->close();
+
+    if ($hasQuestionMediaTable) {
+        $stmtMedia = $mysqli->prepare(
+            'SELECT id, role, file_path, file_type, alt_text, sort_order
+             FROM ege_question_media
+             WHERE question_id = ?
+             ORDER BY sort_order ASC, id ASC'
+        );
+
+        if ($stmtMedia) {
+            $stmtMedia->bind_param('i', $questionId);
+            $stmtMedia->execute();
+            $resultMedia = $stmtMedia->get_result();
+            while ($row = $resultMedia->fetch_assoc()) {
+                $role = (string)($row['role'] ?? 'question');
+                if (!isset($mediaByRole[$role])) {
+                    $mediaByRole[$role] = [];
+                }
+                $mediaByRole[$role][] = $row;
+            }
+            $stmtMedia->close();
+        }
+    }
 } catch (Throwable $exception) {
     // Optional media block should not break question rendering.
 }

@@ -46,7 +46,7 @@ require_once __DIR__ . '/../authentication/auth.php';
                         </li>
                         <?php if (get_user_role() === 'admin' || get_user_role() === 'teacher'): ?>
                             <li class="nav-item">
-                                <a class="nav-link" href="<?php echo SITE_URL; ?>/admin/">Панель администратора</a>
+                                <a class="nav-link" href="<?php echo SITE_URL; ?>/teachers.php">Кабинет учителя</a>
                             </li>
                         <?php endif; ?>
                         <li class="nav-item">

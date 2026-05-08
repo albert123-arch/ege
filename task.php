@@ -207,6 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $isLoggedIn) {
 $task = null;
 $subtopics = [];
 $questions = [];
+$hasQuestionMediaTable = false;
 
 if ($number <= 0) {
     http_response_code(404);
@@ -214,6 +215,12 @@ if ($number <= 0) {
 }
 
 try {
+    $resultMediaTable = $mysqli->query("SHOW TABLES LIKE 'ege_question_media'");
+    $hasQuestionMediaTable = $resultMediaTable && $resultMediaTable->num_rows > 0;
+    if ($resultMediaTable) {
+        $resultMediaTable->free();
+    }
+
     $stmtTask = $mysqli->prepare('SELECT * FROM ege_task_types WHERE task_number = ? AND is_active = 1 LIMIT 1');
     $stmtTask->bind_param('i', $number);
     $stmtTask->execute();
@@ -256,6 +263,10 @@ try {
         }
     }
 
+    $questionImageSelect = $hasQuestionMediaTable
+        ? "(SELECT qm.file_path FROM ege_question_media qm WHERE qm.question_id = q.id AND qm.role = 'question' ORDER BY qm.sort_order ASC, qm.id ASC LIMIT 1)"
+        : "''";
+
     $sql = '
         SELECT
             q.*,
@@ -265,14 +276,7 @@ try {
             tt.max_score AS task_max_score,
             st.title AS subtopic_title,
             t.title AS topic_title,
-            (
-                SELECT qm.file_path
-                FROM ege_question_media qm
-                WHERE qm.question_id = q.id
-                                    AND qm.role = 'question'
-                ORDER BY qm.sort_order ASC, qm.id ASC
-                LIMIT 1
-            ) AS question_image,
+            ' . $questionImageSelect . ' AS question_image,
             CASE
                 WHEN ? > 0 THEN EXISTS(
                     SELECT 1

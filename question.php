@@ -267,17 +267,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 $page_title = 'Вопрос #' . (int)$question['id'];
 require_once __DIR__ . '/includes/header.php';
+
+$taskNumberForHeader = trim((string)($question['task_number'] ?? $question['task_type_id'] ?? ''));
+$taskTypeTitle = trim((string)($question['task_title'] ?? ''));
+$answerTypeValue = (string)($question['answer_type'] ?? '');
+$partLabel = $answerTypeValue === 'full' ? 'Часть 2' : 'Часть 1';
+$answerTypeLabel = $answerTypeValue === 'full' ? 'Развернутый' : 'Краткий';
+$difficultyRaw = mb_strtolower(trim((string)($question['difficulty'] ?? '')), 'UTF-8');
+$difficultyMap = [
+    'easy' => 'базовая',
+    'basic' => 'базовая',
+    'medium' => 'повышенная',
+    'hard' => 'повышенная',
+    'advanced' => 'повышенная',
+    'базовая' => 'базовая',
+    'повышенная' => 'повышенная',
+    'высокая' => 'высокая',
+];
+$difficultyLabel = $difficultyMap[$difficultyRaw] ?? trim((string)($question['difficulty'] ?? ''));
+$maxScoreValue = isset($question['max_score']) ? (string)(float)$question['max_score'] : '0';
+$maxScoreLabel = rtrim(rtrim($maxScoreValue, '0'), '.');
+if ($maxScoreLabel === '') {
+    $maxScoreLabel = '0';
+}
+
+$sourceValue = trim((string)($question['source'] ?? ''));
+$sourceName = trim((string)($question['source_name'] ?? ''));
+$sourceMonth = trim((string)($question['source_month'] ?? ''));
+$sourcePeriod = trim((string)($question['source_period'] ?? ''));
+$sourceVariantCode = trim((string)($question['source_variant_code'] ?? ''));
+$subtopicTitle = trim((string)($question['subtopic_title'] ?? ''));
+
+$periodLabelMap = [
+    'demo' => 'демоверсия',
+    'early' => 'досрочный период',
+    'march' => 'март',
+    'april' => 'апрель',
+    'may' => 'май',
+    'june' => 'июнь',
+    'main' => 'основная волна',
+    'reserve' => 'резервный день',
+    'teacher' => 'учительский вариант',
+    'training' => 'тренировочный вариант',
+    'other' => 'другое',
+];
+$sourcePeriodLabel = $sourcePeriod !== '' ? ($periodLabelMap[$sourcePeriod] ?? $sourcePeriod) : '';
+
+$shortVariantCode = '';
+if ($sourceVariantCode !== '') {
+    $dashPos = strrpos($sourceVariantCode, '-');
+    $shortVariantCode = $dashPos === false ? $sourceVariantCode : substr($sourceVariantCode, $dashPos + 1);
+}
+
+$topMetaParts = [];
+if ($subtopicTitle !== '') {
+    $topMetaParts[] = $subtopicTitle;
+}
+if ($sourceName !== '') {
+    $topMetaParts[] = $sourceName;
+}
+
+$hasExamDateMeta = ($sourceMonth !== '' || $sourcePeriodLabel !== '');
+if ($sourceValue === 'ЕГЭ' && $sourceName !== '' && $hasExamDateMeta) {
+    if ($sourceMonth !== '') {
+        $topMetaParts[] = $sourceMonth;
+    }
+    if ($sourcePeriodLabel !== '') {
+        $topMetaParts[] = $sourcePeriodLabel;
+    }
+}
+
+if ($shortVariantCode !== '') {
+    if ($sourceValue === 'ФИПИ') {
+        $topMetaParts[] = '№ ' . $shortVariantCode;
+    } elseif ($sourceValue === 'ЕГЭ' && !$hasExamDateMeta) {
+        $variantLabel = ctype_digit($shortVariantCode) ? (string)(int)$shortVariantCode : $shortVariantCode;
+        $topMetaParts[] = 'Вариант ' . $variantLabel;
+    } elseif ($sourceValue !== 'ЕГЭ') {
+        $topMetaParts[] = '№ ' . $shortVariantCode;
+    }
+}
+
+$topMetaLine = implode(' · ', $topMetaParts);
 ?>
 
-<div class="d-flex justify-content-between align-items-center mb-4 gap-3 flex-wrap">
-    <div>
-        <h1 class="h3 mb-1">Задание №<?= e($question['task_number']) ?>: <?= e($question['task_title']) ?></h1>
-        <p class="text-muted mb-0">
-            <?= !empty($question['subtopic_title']) ? 'Подтема: ' . e($question['subtopic_title']) . ' · ' : '' ?>
-            <?= !empty($question['topic_title']) ? 'Тема: ' . e($question['topic_title']) . ' · ' : '' ?>
-            Сложность: <?= e($question['difficulty']) ?>
-        </p>
-    </div>
+<div class="d-flex justify-content-end align-items-center mb-4 gap-3 flex-wrap">
     <a class="btn btn-outline-secondary" href="/task.php?number=<?= (int)$question['task_number'] ?>">Назад к номеру</a>
 </div>
 
@@ -290,15 +364,16 @@ require_once __DIR__ . '/includes/header.php';
 
 <article class="card border-0 shadow-sm mb-4">
     <div class="card-body">
-        <h2 class="h4 mb-3"><?= e($question['title']) ?></h2>
+        <div class="question-header mb-4">
+            <?php if ($topMetaLine !== ''): ?>
+                <div class="text-muted small mb-2"><?= e($topMetaLine) ?></div>
+            <?php endif; ?>
 
-        <div class="small text-muted mb-3">
-            <?php if (!empty($question['source_name'])): ?>Источник: <?= e($question['source_name']) ?> · <?php endif; ?>
-            <?php if (!empty($question['source_year'])): ?><?= e($question['source_year']) ?> · <?php endif; ?>
-            <?php if (!empty($question['source_month'])): ?><?= e($question['source_month']) ?> · <?php endif; ?>
-            <?php if (!empty($question['source_period'])): ?><?= e($question['source_period']) ?> · <?php endif; ?>
-            <?php if (!empty($question['source_variant_code'])): ?>Вариант <?= e($question['source_variant_code']) ?> · <?php endif; ?>
-            <?php if (!empty($question['source_task_number'])): ?>Номер в источнике: <?= e($question['source_task_number']) ?><?php endif; ?>
+            <h1 class="h3 mb-2">Задание №<?= e($taskNumberForHeader) ?>. <?= e($taskTypeTitle) ?></h1>
+
+            <div class="text-muted small">
+                <?= e($partLabel) ?> · <?= e($difficultyLabel) ?> · <?= e($answerTypeLabel) ?> · Макс. балл: <?= e($maxScoreLabel) ?>
+            </div>
         </div>
 
         <?php if (!empty($mediaByRole['question'])): ?>

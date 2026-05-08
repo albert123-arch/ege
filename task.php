@@ -265,6 +265,14 @@ try {
             tt.max_score AS task_max_score,
             st.title AS subtopic_title,
             t.title AS topic_title,
+            (
+                SELECT qm.file_path
+                FROM ege_question_media qm
+                WHERE qm.question_id = q.id
+                  AND qm.role = "question"
+                ORDER BY qm.sort_order ASC, qm.id ASC
+                LIMIT 1
+            ) AS question_image,
             CASE
                 WHEN ? > 0 THEN EXISTS(
                     SELECT 1
@@ -272,6 +280,12 @@ try {
                     WHERE b.user_id = ? AND b.question_id = q.id
                 )
                 ELSE 0
+
+                                    <?php if (!empty($question['question_image'])): ?>
+                                        <div class="mb-3">
+                                            <img class="img-fluid rounded border" src="<?= e($question['question_image']) ?>" alt="Иллюстрация к задаче">
+                                        </div>
+                                    <?php endif; ?>
             END AS is_bookmarked
         FROM ege_questions q
         JOIN ege_task_types tt ON tt.id = q.task_type_id

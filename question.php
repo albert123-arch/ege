@@ -64,6 +64,35 @@ if ((int)$question['is_published'] !== 1 && !$canViewUnpublished) {
     die('Вопрос не найден');
 }
 
+$mediaByRole = [
+    'question' => [],
+    'solution' => [],
+    'hint' => [],
+    'extra' => [],
+];
+
+try {
+    $stmtMedia = $mysqli->prepare(
+        'SELECT id, role, file_path, file_type, alt_text, sort_order
+         FROM ege_question_media
+         WHERE question_id = ?
+         ORDER BY sort_order ASC, id ASC'
+    );
+    $stmtMedia->bind_param('i', $questionId);
+    $stmtMedia->execute();
+    $resultMedia = $stmtMedia->get_result();
+    while ($row = $resultMedia->fetch_assoc()) {
+        $role = (string)($row['role'] ?? 'question');
+        if (!isset($mediaByRole[$role])) {
+            $mediaByRole[$role] = [];
+        }
+        $mediaByRole[$role][] = $row;
+    }
+    $stmtMedia->close();
+} catch (Throwable $exception) {
+    // Optional media block should not break question rendering.
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['bookmark_action'])) {
         if (!$isLoggedIn) {
@@ -261,7 +290,27 @@ require_once __DIR__ . '/includes/header.php';
             <?php if (!empty($question['source_task_number'])): ?>Номер в источнике: <?= e($question['source_task_number']) ?><?php endif; ?>
         </div>
 
-        <div class="mb-3"><?= $question['body_html'] ?></div>
+        <?php if (!empty($mediaByRole['question'])): ?>
+            <div class="row g-4 align-items-start mb-3">
+                <div class="col-lg-8">
+                    <div><?= $question['body_html'] ?></div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="vstack gap-3">
+                        <?php foreach ($mediaByRole['question'] as $media): ?>
+                            <figure class="mb-0">
+                                <img class="img-fluid rounded border w-100" src="<?= e($media['file_path']) ?>" alt="<?= e($media['alt_text'] ?: 'Иллюстрация к задаче') ?>">
+                                <?php if (!empty($media['alt_text'])): ?>
+                                    <figcaption class="small text-muted mt-1"><?= e($media['alt_text']) ?></figcaption>
+                                <?php endif; ?>
+                            </figure>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+            </div>
+        <?php else: ?>
+            <div class="mb-3"><?= $question['body_html'] ?></div>
+        <?php endif; ?>
 
         <?php if ((string)$question['answer_type'] === 'short'): ?>
             <form method="post" class="row g-2 align-items-end">
@@ -324,6 +373,45 @@ require_once __DIR__ . '/includes/header.php';
 
         <?php if ($showSolution && !empty($question['answer_text'])): ?>
             <div class="alert alert-light border mb-0">Правильный ответ: <strong><?= e($question['answer_text']) ?></strong></div>
+        <?php endif; ?>
+
+        <?php if (!empty($mediaByRole['solution'])): ?>
+            <div class="mt-3">
+                <h3 class="h6">Иллюстрации решения</h3>
+                <div class="row g-3">
+                    <?php foreach ($mediaByRole['solution'] as $media): ?>
+                        <div class="col-md-6">
+                            <img class="img-fluid rounded border" src="<?= e($media['file_path']) ?>" alt="<?= e($media['alt_text'] ?: 'Иллюстрация решения') ?>">
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($mediaByRole['hint'])): ?>
+            <div class="mt-3">
+                <h3 class="h6">Подсказки</h3>
+                <div class="row g-3">
+                    <?php foreach ($mediaByRole['hint'] as $media): ?>
+                        <div class="col-md-6">
+                            <img class="img-fluid rounded border" src="<?= e($media['file_path']) ?>" alt="<?= e($media['alt_text'] ?: 'Подсказка') ?>">
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
+        <?php if (!empty($mediaByRole['extra'])): ?>
+            <div class="mt-3">
+                <h3 class="h6">Дополнительно</h3>
+                <div class="row g-3">
+                    <?php foreach ($mediaByRole['extra'] as $media): ?>
+                        <div class="col-md-6">
+                            <img class="img-fluid rounded border" src="<?= e($media['file_path']) ?>" alt="<?= e($media['alt_text'] ?: 'Дополнительный материал') ?>">
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
         <?php endif; ?>
 
         <div class="mt-3">

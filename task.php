@@ -439,12 +439,17 @@ require_once __DIR__ . '/includes/header.php';
                         <a class="btn btn-sm btn-outline-primary" href="/question.php?id=<?= (int)$question['id'] ?>">Открыть</a>
                     </div>
 
-                    <div class="mb-3"><?= $question['body_html'] ?></div>
-
                     <?php if (!empty($question['question_image'])): ?>
-                        <div class="mb-3">
-                            <img class="img-fluid rounded border" src="<?= e($question['question_image']) ?>" alt="Иллюстрация к задаче">
+                        <div class="row g-3 align-items-start mb-3">
+                            <div class="col-lg-8">
+                                <div><?= $question['body_html'] ?></div>
+                            </div>
+                            <div class="col-lg-4">
+                                <img class="img-fluid rounded border w-100" src="<?= e($question['question_image']) ?>" alt="Иллюстрация к задаче">
+                            </div>
                         </div>
+                    <?php else: ?>
+                        <div class="mb-3"><?= $question['body_html'] ?></div>
                     <?php endif; ?>
 
                     <?php if ((string)$question['answer_type'] === 'short'): ?>

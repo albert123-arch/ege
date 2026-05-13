@@ -95,6 +95,12 @@ $introHtml = $page['intro_html'] ?? '<p>Теория, практика, зада
 	<title><?= e($pageTitle) ?></title>
 	<meta name="description" content="<?= e($pageDescription) ?>">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="icon" href="/assets/icons/favicon.ico" sizes="any">
+	<link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+	<link rel="apple-touch-icon" href="/assets/icons/apple-touch-icon.png">
+	<link rel="manifest" href="/assets/icons/site.webmanifest">
+	<link rel="mask-icon" href="/assets/icons/safari-pinned-tab.svg" color="#2563eb">
+	<meta name="theme-color" content="#2563eb">
 
 	<link rel="canonical" href="<?= SITE_URL ?>/">
 
@@ -102,6 +108,9 @@ $introHtml = $page['intro_html'] ?? '<p>Теория, практика, зада
 	<meta property="og:description" content="<?= e($pageDescription) ?>">
 	<meta property="og:type" content="website">
 	<meta property="og:url" content="<?= SITE_URL ?>/">
+	<meta property="og:image" content="https://ege.maths4u.sbs/assets/icons/og-image.png">
+	<meta property="og:image:width" content="1200">
+	<meta property="og:image:height" content="630">
 
 	<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 
